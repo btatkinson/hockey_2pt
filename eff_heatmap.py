@@ -8,8 +8,9 @@ import matplotlib.cm as cm
 import matplotlib.lines as mlines
 
 from numpy import *
-
+from helpers import draw_half_rink
 from scipy.stats import gaussian_kde
+from scipy.ndimage.filters import gaussian_filter
 
 # delta = 0.025
 # x = np.arange(-3.0, 3.0, delta)
@@ -41,19 +42,25 @@ df = pd.read_pickle("shot_locations.pkl")
 # transfer all locations to same half
 df['X'] = df.copy().X.abs()
 
+# make all positive
+df['Y'] = df['Y'] + 42
+
 goal_df = df.loc[df['Shot Result']=='GOAL']
 # ms_df = shot_df.loc[shot_df['Shot Result']!='GOAL']
 
 ## PLOT DISTANCE FROM GOAL
-# z = goal_df.DistFG
+# z = df.DistFG
 # cmap = matplotlib.cm.get_cmap('viridis_r')
 # normalize = matplotlib.colors.Normalize(vmin=min(z), vmax=max(z))
 # colors = [cmap(normalize(value)) for value in z]
+# #
+# fig1 = plt.figure()
+# ax1 = fig1.add_subplot(1, 2, 1)
+# ax1.scatter(x=df.X.values, y=df.Y.values, c=colors, s=10, edgecolor='')
+# fig1,ax1 = draw_half_rink(fig1,ax1)
+# ax1.set_title('NHL Shot Locations 2014-2019')
 #
-# plt.scatter(x=goal_df.X.values, y=goal_df.Y.values, c=colors, s=4)
-# plt.show()
-
-# GOALS HEATMAP
+# # GOALS HEATMAP
 # x = goal_df.X.values
 # y = goal_df.Y.values
 #
@@ -62,19 +69,21 @@ goal_df = df.loc[df['Shot Result']=='GOAL']
 # idx = z.argsort()
 # x, y, z = x[idx], y[idx], z[idx]
 #
-# fig, ax = plt.subplots()
-# ax.scatter(x, y, c=z, s=10, edgecolor='')
+# ax2 = fig1.add_subplot(1, 2, 2)
+# ax2.set_title('NHL Goal Locations 2014-2019')
+# ax2.scatter(x, y, c=z, cmap='magma',s=10, edgecolor='')
+# fig1,ax2 = draw_half_rink(fig1,ax2)
 # plt.show()
 
 # HEXAGONAL BINS
-# x = df.X
-# y = df.Y
-#
-# xmin = x.min()
-# xmax = x.max()
-# ymin = y.min()
-# ymax = y.max()
-#
+x = df.X
+y = df.Y
+
+xmin = x.min()
+xmax = x.max()
+ymin = y.min()
+ymax = y.max()
+
 # fig, axs = plt.subplots(ncols=2, sharey=True, figsize=(10, 6))
 # fig.subplots_adjust(hspace=0.5, left=0.07, right=0.93)
 # ax = axs[0]
@@ -90,118 +99,76 @@ goal_df = df.loc[df['Shot Result']=='GOAL']
 # ax.set_title("With a log color scale")
 # cb = fig.colorbar(hb, ax=ax)
 # cb.set_label('log10(N)')
-#
-# plt.show()
 
 
 # Efficiency Map
 
-print(df.head())
-
-total_x = df.X
-total_y = df.Y
-
-xmin = total_x.min()
-xmax = total_x.max()
-ymin = total_y.min()
-ymax = total_y.max()
-
-thb = plt.hexbin(total_x, total_y, gridsize=35, cmap='inferno')
-
-# tbin_xy = thb.get_offsets()
-tbin_counts = thb.get_array()
-
-goal_df = df.loc[df['Shot Result']=='GOAL']
-
-goal_x = goal_df.X
-goal_y = goal_df.Y
-
-ghb = plt.hexbin(goal_x, goal_y, gridsize=35, cmap='inferno')
-
-# gbin_xy = ghb.get_offsets()
-gbin_counts = ghb.get_array()
-
-# min threshold
-gbin_counts[tbin_counts<=10] = 0
-
-ehb=plt.hexbin(goal_x, goal_y, gridsize=35, vmin=0, cmap='inferno')
-
-efficiency = np.divide(gbin_counts,tbin_counts)
-sort = np.sort(efficiency)
-efficiency[efficiency == -inf] = 0
-efficiency[efficiency == inf] = 0
-NaNs = isnan(efficiency)
-efficiency[NaNs] = 0
-
-x = np.linspace(0,10)
-y = x**2
-
-# blue line
-x1, y1 = [25,25], [-42, 42]
-plt.plot(x1,y1,'b')
-
-# goal line
-x1, y1 = [89, 89], [-42, 42]
-plt.plot(x1,y1,'r')
-
-# goal Rectangle patch
-# goal = matplotlib.patches.Rectangle((89,1),3,2,linewidth=1,edgecolor='r',facecolor='none')
-
+# fig1 = plt.figure()
+# ax1 = fig1.add_subplot(1, 2, 1)
 #
-# sort = np.sort(efficiency)
-# ehb.set_array(efficiency)
-
-# efficiency coordinates and z values
-# eff_xy = ehb.get_offsets()
-# x = eff_xy[:,0]
-# y = eff_xy[:,1]
-# z = ehb.get_array()
-
-# point_df = pd.DataFrame({'X':x,'Y':y, 'Z':z})
-# point_df = point_df.round(5)
-
-# MUST ALTER POINT LISTS TO BE A RECTANGULAR GRID
-# X = np.unique(point_df.X)
-# Y = np.unique(point_df.Y)
+# total_x = df.X
+# total_y = df.Y
 #
-# _X,_Y = np.meshgrid(X,Y)
-
-# initialize dict for lookup
-# point_dict = {}
-# for xrow in _X:
-#     for _x in xrow:
-#         point_dict[_x] = {}
-#         # _x is x value of cell
-#         for yrow in _Y:
-#             for _y in yrow:
-#                 point_dict[_x][_y] = 0
+# xmin = total_x.min()
+# xmax = total_x.max()
+# ymin = total_y.min()
+# ymax = total_y.max()
 #
-# max_value = 0.5
-# populate dict with calculated values
-# for idx, _x in enumerate(x):
-#     x_val = x[idx]
-#     y_val = y[idx]
-#     x_val = np.round(x_val,5)
-#     y_val = np.round(y_val,5)
-#     _z = max(z[idx],max_value)
-#     point_dict[x_val][y_val] = _z
+# thb = ax1.hexbin(total_x, total_y, gridsize=35, cmap='inferno')
 #
-# print(len(point_dict))
-# print(len(point_dict[0]))
-
-# make rectangular grid by looking up values
-
-# grid = pd.DataFrame.from_dict(point_dict)
-# print(grid.head())
-
-# print(_X.shape)
-# print(_Y.shape)
-# print(grid.shape)
+# # tbin_xy = thb.get_offsets()
+# tbin_counts = thb.get_array()
 #
-# fig, ax = plt.subplots()
-# CS = ax.contour(_X, _Y, grid)
-# ax.clabel(CS, inline=1, fontsize=10)
-# ax.set_title('Simplest default with labels')
+# goal_df = df.loc[df['Shot Result']=='GOAL']
+#
+# goal_x = goal_df.X
+# goal_y = goal_df.Y
+#
+# ghb = ax1.hexbin(goal_x, goal_y, gridsize=35, cmap='inferno')
+#
+# # gbin_xy = ghb.get_offsets()
+# gbin_counts = ghb.get_array()
+#
+# # min threshold
+# min_threshold = 10
+# gbin_counts[tbin_counts<=min_threshold] = 0
+#
+# ehb=ax1.hexbin(goal_x, goal_y, gridsize=35, vmin=0, cmap='inferno')
+#
+# tbin_counts[tbin_counts<=0] = 0.001
+# eff_arr = np.divide(gbin_counts,tbin_counts)
+# eff_arr[eff_arr>0.3] = 0
+# ehb.set_array(eff_arr)
+# CB = fig1.colorbar(ehb)
+#
+# fig1,ax1 = draw_half_rink(fig1,ax1)
+
+###
+#######################
+
+with open ('_Z.pkl', 'rb') as fp:
+    _Z = pickle.load(fp)
+with open ('_gZ.pkl', 'rb') as fp:
+    goal_Z = pickle.load(fp)
+
+min_threshold = 8
+
+
+z_mask = goal_Z[_Z>min_threshold]
+
+efficien_Z = z_mask/_Z
+max_eff = 0.24
+efficien_Z[efficien_Z  > max_eff] = max_eff
+
+sigma = 0.7 # smoothing value
+data = gaussian_filter(efficien_Z, sigma)
+
+fig1,ax2 = plt.subplots()
+# ax2 = fig1.add_subplot()
+CS = ax2.contourf(data, 3)
+CB = fig1.colorbar(CS)
+fig1,ax2 = draw_half_rink(fig1,ax2)
+ax2.set_title('Shooting Pct of Shots 2014-2019, Smoothed With Gaussian Filter')
 
 plt.show()
 

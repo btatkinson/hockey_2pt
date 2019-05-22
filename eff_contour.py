@@ -12,6 +12,7 @@ from numpy import *
 from tqdm import tqdm
 from scipy.stats import gaussian_kde
 from scipy.ndimage.filters import gaussian_filter
+from helpers import draw_half_rink
 
 df = pd.read_pickle("shot_locations.pkl")
 
@@ -23,14 +24,15 @@ df = pd.read_pickle("shot_locations.pkl")
 df['X'] = df.copy().X.abs()
 
 df=df.round(5)
+
 # get a count of all events at every point
 
 # contour plor requires a rectangular grid
-uni_x = np.unique(df.X)
-uni_y = np.unique(df.Y)
-
-uni_x = np.sort(uni_x)
-uni_y = np.sort(uni_y)
+# uni_x = np.unique(df.X)
+# uni_y = np.unique(df.Y)
+#
+# uni_x = np.sort(uni_x)
+# uni_y = np.sort(uni_y)
 
 # ONLY NEED TO DO ONCE THEN SAVE
 # _X, _Y = np.meshgrid(uni_x,uni_y)
@@ -142,40 +144,59 @@ with open ('_Z.pkl', 'rb') as fp:
 with open ('_gZ.pkl', 'rb') as fp:
     goal_Z = pickle.load(fp)
 
-min_threshold = 8
+min_threshold = 5
 
-
-z_mask = goal_Z[_Z>min_threshold]
+# minimum sample size
+mask = (_Z>min_threshold)
+z_mask = goal_Z[mask]
 
 efficien_Z = z_mask/_Z
 max_eff = 0.24
 efficien_Z[efficien_Z  > max_eff] = max_eff
 
-# efficien_Z = []
-# for y,row in enumerate(_Z):
-#     new_row = []
-#     for x in row:
-#         print(x,y)
-#         z_val = int(x)
-#         goal_val = int(goal_Z[y][x])
-#         eZ = 0
-#         if z_val >= min_threshold:
-#             if goal_val >= 0:
-#                 eZ = goal_Z/_Z
-#         new_row.append(eZ)
-#     efficien_Z.append(new_row)
 
-sigma = 0.7 # smoothing value
-data = gaussian_filter(efficien_Z, sigma)
+x = np.arange(0, 100)
+y = np.arange(0, 85)
+arr = np.zeros((y.size, x.size))
 
-fig, ax = plt.subplots()
-CS = ax.contourf(data, 3)
-CB = fig.colorbar(CS)
-# ax.clabel(CS)
+# center of circle & radius
+cx = 89
+cy = 42
+r = 16
 
-# Ellipse
-# e = matplotlib.patches.Ellipse([89,42], width=35, height=22, angle=0,edgecolor='red',facecolor='none')
-# ax.add_artist(e)
+# my 2 point line ellipse dimensions
+# w=.70
+# h=1.25
+# mask1 = ((x[np.newaxis,:]-cx)**2)/(h**2) + ((y[:,np.newaxis]-cy)**2)/(w**2) < r**2
+# mask = mask1
+# two_Z = efficien_Z.copy()
+# two_Z[~mask] = ma.dot(two_Z,2)
+
+# resembles free throw line
+# mask1 = (x[np.newaxis,:]-cx)**2 + (y[:,np.newaxis]-cy)**2 < r**2
+# mask2 = (0 + y[:,np.newaxis]) > 34
+# mask3 = (0 + y[:,np.newaxis]) < 50
+# mask = mask1 & mask2 & mask3
+# two_Z = efficien_Z
+# two_Z[~mask] = ma.dot(two_Z,2)
+
+# print(two_Z)
+# print(two_Z.shape)
+
+sigma = 0.6 # smoothing value
+data1 = gaussian_filter(efficien_Z, sigma)
+data2 = gaussian_filter(two_Z, sigma)
+
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(1, 2, 1)
+CS = ax1.contourf(data1, 6)
+CB = fig1.colorbar(CS)
+# ax1.clabel(CS)
+
+ax2 = fig1.add_subplot(1, 2, 2)
+CS = ax2.contourf(data2, 6)
+CB = fig1.colorbar(CS)
+# ax2.clabel(CS)
 
 def arc_patch(xy, width, height, theta1=0., theta2=180., resolution=50, **kwargs):
 
@@ -188,42 +209,33 @@ def arc_patch(xy, width, height, theta1=0., theta2=180., resolution=50, **kwargs
 
     return poly
 
-a=arc_patch(xy=[89,42], width=16,
-                height=11, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
-ax.add_artist(a)
+# 2 point arc
+
+# my 2 point line ellipse
+# a=arc_patch(xy=[89,42], width=19,
+#                 height=11, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
+# ax2.add_artist(a)
+
+# resembles free throw line
+# a=arc_patch(xy=[89,42], width=16,
+#                 height=16, theta1=150, theta2=210, edgecolor='orange',facecolor='none')
+# ax.add_artist(a)
+# x1, y1 = [75.5, 89], [50, 50]
+# plt.plot(x1,y1,'orange',linewidth=0.8)
+#
+# x1, y1 = [75.5, 89], [34, 34]
+# plt.plot(x1,y1,'orange',linewidth=0.8)
 
 
-ax.set_title('Hypothetical 2 point line')
 
-# blue line
-x1, y1 = [25,25], [0, 84]
-plt.plot(x1,y1,'b')
 
-# goal line
-x1, y1 = [89, 89], [0, 84]
-plt.plot(x1,y1,'r')
+ax1.set_title('Current Efficiency Map')
+ax2.set_title('2-Point Line Hypothetical Efficiency Map')
 
-# goal
-g = matplotlib.patches.Rectangle([89,39], 3, 6, angle=0.0)
-ax.add_artist(g)
-
-# faceoff circles
-# 20.5
-# 64.5
-# 65 is a guess
-fc1 = matplotlib.patches.Circle([65,20.5], 15, edgecolor='r',facecolor='none')
-fc2 = matplotlib.patches.Circle([65,64.5], 15, edgecolor='r',facecolor='none')
-ax.add_artist(fc1)
-ax.add_artist(fc2)
-
-# crease
-crease=arc_patch(xy=[89,42], width=4,
-                height=4, theta1=90, theta2=270,edgecolor='b',facecolor='none')
-ax.add_artist(crease)
+fig1, ax1 = draw_half_rink(fig1,ax1)
+fig1, ax2 = draw_half_rink(fig1,ax2)
 
 plt.show()
-
-
 
 
 
