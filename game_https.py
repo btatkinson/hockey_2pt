@@ -45,7 +45,7 @@ for year in years:
 print("You've added " + str(len(urls)) + " game log urls to the output file.")
 print("Writing a list of urls in a pickle file...")
 
-with open('game_urls', 'wb') as fp:
+with open('game_urls.pkl', 'wb') as fp:
     pickle.dump(urls, fp)
 
 print("File outputted.")

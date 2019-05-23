@@ -6,7 +6,7 @@ import numpy as np
 
 from tqdm import tqdm
 
-with open ('game_urls', 'rb') as fp:
+with open ('game_urls.pkl', 'rb') as fp:
     urls = pickle.load(fp)
 
 # test_urls = urls[:10]
