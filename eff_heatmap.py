@@ -12,21 +12,6 @@ from helpers import draw_half_rink
 from scipy.stats import gaussian_kde
 from scipy.ndimage.filters import gaussian_filter
 
-# delta = 0.025
-# x = np.arange(-3.0, 3.0, delta)
-# y = np.arange(-2.0, 2.0, delta)
-# X, Y = np.meshgrid(x, y)
-# print(X)
-# print(Y)
-# Z1 = np.exp(-X**2 - Y**2)
-# print(Z1)
-# Z2 = np.exp(-(X - 1)**2 - (Y - 1)**2)
-# Z = (Z1 - Z2) * 2
-#
-# print(Z)
-#
-# raise ValueError
-
 df = pd.read_pickle("shot_locations.pkl")
 
 # 685,509 shots
@@ -45,7 +30,13 @@ df['X'] = df.copy().X.abs()
 # make all positive
 df['Y'] = df['Y'] + 42
 
-goal_df = df.loc[df['Shot Result']=='GOAL']
+# eliminate blocked shots?
+# print(len(df))
+nb_df = df.loc[df['Shot Result']!='BLOCKED_SHOT']
+b_df = df.loc[df['Shot Result']=='BLOCKED_SHOT']
+# print(len(df))
+
+# goal_df = df.loc[df['Shot Result']=='GOAL']
 # ms_df = shot_df.loc[shot_df['Shot Result']!='GOAL']
 
 ## PLOT DISTANCE FROM GOAL
@@ -56,11 +47,12 @@ goal_df = df.loc[df['Shot Result']=='GOAL']
 # #
 # fig1 = plt.figure()
 # ax1 = fig1.add_subplot(1, 2, 1)
-# ax1.scatter(x=df.X.values, y=df.Y.values, c=colors, s=10, edgecolor='')
+# sp = ax1.scatter(x=df.X.values, y=df.Y.values, c=colors, s=10, edgecolor='')
 # fig1,ax1 = draw_half_rink(fig1,ax1)
 # ax1.set_title('NHL Shot Locations 2014-2019')
-#
-# # GOALS HEATMAP
+# #
+
+# # # GOALS HEATMAP
 # x = goal_df.X.values
 # y = goal_df.Y.values
 #
@@ -71,35 +63,41 @@ goal_df = df.loc[df['Shot Result']=='GOAL']
 #
 # ax2 = fig1.add_subplot(1, 2, 2)
 # ax2.set_title('NHL Goal Locations 2014-2019')
-# ax2.scatter(x, y, c=z, cmap='magma',s=10, edgecolor='')
+# sp2 = ax2.scatter(x, y, c=z, cmap='magma',s=10, edgecolor='')
 # fig1,ax2 = draw_half_rink(fig1,ax2)
 # plt.show()
 
 # HEXAGONAL BINS
-x = df.X
-y = df.Y
+x1 = nb_df.X
+y1 = nb_df.Y
+x2 = b_df.X
+y2 = b_df.Y
 
-xmin = x.min()
-xmax = x.max()
-ymin = y.min()
-ymax = y.max()
+xmin = x1.min()
+xmax = x1.max()
+ymin = y1.min()
+ymax = y1.max()
 
-# fig, axs = plt.subplots(ncols=2, sharey=True, figsize=(10, 6))
-# fig.subplots_adjust(hspace=0.5, left=0.07, right=0.93)
-# ax = axs[0]
-# hb = ax.hexbin(x, y, gridsize=25, cmap='inferno')
-# ax.axis([xmin, xmax, ymin, ymax])
-# ax.set_title("Hexagon binning")
-# cb = fig.colorbar(hb, ax=ax)
-# cb.set_label('counts')
-#
-# ax = axs[1]
-# hb = ax.hexbin(x, y, gridsize=25, bins='log', cmap='inferno')
-# ax.axis([xmin, xmax, ymin, ymax])
-# ax.set_title("With a log color scale")
-# cb = fig.colorbar(hb, ax=ax)
-# cb.set_label('log10(N)')
+fig, axs = plt.subplots(ncols=2, sharey=True, figsize=(10, 6))
+fig.subplots_adjust(hspace=0.5, left=0.07, right=0.93)
+ax = axs[0]
+hb = ax.hexbin(x1, y1, gridsize=25, cmap='inferno')
+ax.axis([xmin, xmax, ymin, ymax])
+ax.set_title("Non-Blocked Shots")
+cb = fig.colorbar(hb, ax=ax)
+cb.set_label('counts')
+fig, ax = draw_half_rink(fig, ax)
+# #
+ax = axs[1]
+hb = ax.hexbin(x2, y2, gridsize=25, cmap='inferno')
+ax.axis([xmin, xmax, ymin, ymax])
+ax.set_title("Block Locations")
+cb = fig.colorbar(hb, ax=ax)
+cb.set_label('counts')
+fig, ax = draw_half_rink(fig, ax)
 
+plt.show()
+raise ValueError
 
 # Efficiency Map
 
@@ -165,10 +163,10 @@ data = gaussian_filter(efficien_Z, sigma)
 
 fig1,ax2 = plt.subplots()
 # ax2 = fig1.add_subplot()
-CS = ax2.contourf(data, 3)
+CS = ax2.contourf(data, 5)
 CB = fig1.colorbar(CS)
 fig1,ax2 = draw_half_rink(fig1,ax2)
-ax2.set_title('Shooting Pct of Shots 2014-2019, Smoothed With Gaussian Filter')
+ax2.set_title('Shots 2014-2019 without Blocked Shots')
 
 plt.show()
 

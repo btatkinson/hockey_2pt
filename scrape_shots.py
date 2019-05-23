@@ -15,9 +15,9 @@ shot_types = ["SHOT", "MISSED_SHOT", "BLOCKED_SHOT", "GOAL"]
 
 shot_df = []
 
-for tu in tqdm(urls):
+for ep in tqdm(urls):
 
-    response = requests.get(tu)
+    response = requests.get(ep)
     game_json = json.loads(response.text)
 
     all_plays = game_json['liveData']['plays']['allPlays']

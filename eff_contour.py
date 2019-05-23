@@ -151,10 +151,12 @@ mask = (_Z>min_threshold)
 z_mask = goal_Z[mask]
 
 efficien_Z = z_mask/_Z
+
+# maximize possible values
 max_eff = 0.24
 efficien_Z[efficien_Z  > max_eff] = max_eff
 
-
+# dummy points for mask
 x = np.arange(0, 100)
 y = np.arange(0, 85)
 arr = np.zeros((y.size, x.size))
@@ -165,38 +167,75 @@ cy = 42
 r = 16
 
 # my 2 point line ellipse dimensions
-# w=.70
-# h=1.25
+# w=1.4
+# h=2.5
 # mask1 = ((x[np.newaxis,:]-cx)**2)/(h**2) + ((y[:,np.newaxis]-cy)**2)/(w**2) < r**2
 # mask = mask1
 # two_Z = efficien_Z.copy()
 # two_Z[~mask] = ma.dot(two_Z,2)
 
-# resembles free throw line
-# mask1 = (x[np.newaxis,:]-cx)**2 + (y[:,np.newaxis]-cy)**2 < r**2
+
+# more like basketball
+w=.70
+h=1.25
+mask = ((x[np.newaxis,:]-cx)**2)/(h**2) + ((y[:,np.newaxis]-cy)**2)/(w**2) < r**2
+b_Z = efficien_Z.copy()
+b_Z[~mask] = ma.dot(b_Z,2)
+
+# single straight line
+mask = ((y[:,np.newaxis]*0) + x[np.newaxis,:]) > 52
+sl_Z = efficien_Z.copy()
+sl_Z[~mask] = ma.dot(sl_Z,2)
+
+# semi-circle
+_r = 29
+mask = (x[np.newaxis,:]-cx)**2 + (y[:,np.newaxis]-cy)**2 < _r**2
 # mask2 = (0 + y[:,np.newaxis]) > 34
 # mask3 = (0 + y[:,np.newaxis]) < 50
 # mask = mask1 & mask2 & mask3
-# two_Z = efficien_Z
-# two_Z[~mask] = ma.dot(two_Z,2)
+sc_Z = efficien_Z.copy()
+sc_Z[~mask] = ma.dot(sc_Z,2)
 
-# print(two_Z)
-# print(two_Z.shape)
+# two point line and three point line
+w=.9333
+h=1.6666
+mask1 = ((x[np.newaxis,:]-cx)**2)/(h**2) + ((y[:,np.newaxis]-cy)**2)/(w**2) < r**2
+mask2 = ((x[np.newaxis,:]-cx)**2)/(h**2) + ((y[:,np.newaxis]-cy)**2)/(w**2) < r**2
+mask = mask1 & mask2
+two_Z = efficien_Z.copy()
+two_Z[~mask] = ma.dot(two_Z,2)
+w=1.86666
+h=3.3333
+mask = ((x[np.newaxis,:]-cx)**2)/(h**2) + ((y[:,np.newaxis]-cy)**2)/(w**2) < r**2
+three_Z = two_Z.copy()
+three_Z[~mask] = ma.dot(three_Z,1.5)
+# tiny value outside 3 point line that has .28 efficiency, i get rid of it
+max_eff = 0.24
+three_Z[three_Z  > max_eff] = max_eff
 
 sigma = 0.6 # smoothing value
-data1 = gaussian_filter(efficien_Z, sigma)
-data2 = gaussian_filter(two_Z, sigma)
+data1 = gaussian_filter(b_Z, sigma)
+data2 = gaussian_filter(sl_Z, sigma)
+data3 = gaussian_filter(sc_Z, sigma)
+data4 = gaussian_filter(three_Z, sigma)
 
 fig1 = plt.figure()
-ax1 = fig1.add_subplot(1, 2, 1)
+ax1 = fig1.add_subplot(2, 2, 1)
 CS = ax1.contourf(data1, 6)
 CB = fig1.colorbar(CS)
-# ax1.clabel(CS)
 
-ax2 = fig1.add_subplot(1, 2, 2)
+ax2 = fig1.add_subplot(2, 2, 2)
 CS = ax2.contourf(data2, 6)
 CB = fig1.colorbar(CS)
-# ax2.clabel(CS)
+
+ax3 = fig1.add_subplot(2, 2, 3)
+CS = ax3.contourf(data3, 6)
+CB = fig1.colorbar(CS)
+
+ax4 = fig1.add_subplot(2, 2, 4)
+CS = ax4.contourf(data4, 6)
+CB = fig1.colorbar(CS)
+
 
 def arc_patch(xy, width, height, theta1=0., theta2=180., resolution=50, **kwargs):
 
@@ -212,28 +251,47 @@ def arc_patch(xy, width, height, theta1=0., theta2=180., resolution=50, **kwargs
 # 2 point arc
 
 # my 2 point line ellipse
-# a=arc_patch(xy=[89,42], width=19,
-#                 height=11, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
+# a=arc_patch(xy=[89,42], width=38.5,
+#                 height=22.5, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
 # ax2.add_artist(a)
 
+# more like basketball
+a=arc_patch(xy=[89,42], width=19,
+                height=11, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
+ax1.add_artist(a)
+
+# straight line
+x1, y1 = [52, 52], [0, 84]
+ax2.plot(x1,y1,'orange',linewidth=0.8)
+
 # resembles free throw line
-# a=arc_patch(xy=[89,42], width=16,
-#                 height=16, theta1=150, theta2=210, edgecolor='orange',facecolor='none')
-# ax.add_artist(a)
+a=arc_patch(xy=[89,42], width=29,
+                height=29, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
+ax3.add_artist(a)
 # x1, y1 = [75.5, 89], [50, 50]
-# plt.plot(x1,y1,'orange',linewidth=0.8)
+# ax3.plot(x1,y1,'orange',linewidth=0.8)
 #
 # x1, y1 = [75.5, 89], [34, 34]
-# plt.plot(x1,y1,'orange',linewidth=0.8)
+# ax3.plot(x1,y1,'orange',linewidth=0.8)
+
+# three point line
+a=arc_patch(xy=[89,42], width=25.666,
+                height=15, theta1=90, theta2=270, edgecolor='orange',facecolor='none')
+ax4.add_artist(a)
+a=arc_patch(xy=[89,42], width=52.6667,
+                height=30, theta1=90, theta2=270, edgecolor='y',facecolor='none')
+ax4.add_artist(a)
 
 
-
-
-ax1.set_title('Current Efficiency Map')
-ax2.set_title('2-Point Line Hypothetical Efficiency Map')
+ax1.set_title('Closer 2-Point Line')
+ax2.set_title('Straight Line')
+ax3.set_title('Semi-Circle')
+ax4.set_title('3 pt line :O')
 
 fig1, ax1 = draw_half_rink(fig1,ax1)
 fig1, ax2 = draw_half_rink(fig1,ax2)
+fig1, ax3 = draw_half_rink(fig1,ax3)
+fig1, ax4 = draw_half_rink(fig1,ax4)
 
 plt.show()
 
